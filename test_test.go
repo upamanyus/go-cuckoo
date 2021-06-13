@@ -20,19 +20,22 @@ func checkEquivalence(m map[uint64]uint64, c *CuckooMap) bool {
 }
 
 func TestMapSingleThreaded(t *testing.T) {
-	c := MakeCuckooMap(13)
+	c := MakeCuckooMap(16)
 	m := make(map[uint64]uint64)
 
-	N := 10000
+	N := 70000
 	for i := 0; i < N; i++ {
 		k := machine.RandomUint64()
 		v := machine.RandomUint64()
 		m[k] = v
-		if c.Insert(k, v) != INSERT_OK {
-			t.Fatalf("Insert failed")
+		r := c.Insert(k, v)
+		if r == INSERT_FAIL {
+			t.Fatalf("CuckooMap.Insert() failed")
+		} else if r == INSERT_DUP {
+			t.Fatalf("CuckooMap.Insert() duplicate")
 		}
-		if !checkEquivalence(m, c) {
-			t.Fatalf("Maps not equivalent")
-		}
+	}
+	if !checkEquivalence(m, c) {
+		t.Fatalf("Maps not equivalent")
 	}
 }
