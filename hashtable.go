@@ -215,7 +215,7 @@ func (m *CuckooMap) cuckoo_search(i1 uint64, i2 uint64) cuckooPath {
 				e.path = append(e.path, cuckooPathRecord{bucket: e.i, slot: uint64(j), hash: hash})
 				m.locks[lockind(e.i)].Unlock()
 				return e.path
-			} else if len(e.path) < 9 {
+			} else if len(e.path) < 5 {
 				slotToEvict := uint64(j)
 				hash := m.buckets[e.i].kvpairs[slotToEvict].k // XXX: identity hash fn
 				altI := m.index1(m.buckets[e.i].kvpairs[slotToEvict].k)
