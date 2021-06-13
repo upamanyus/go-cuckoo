@@ -15,12 +15,8 @@ const LOCK_STRIPE_MASK = LOCK_STRIPES - 1
 
 // Should be as big as a single cache-line
 type Bucket struct {
-	kvpairs  []KVPair // must have size SLOTS_PER_BUCKET
-	occupied []bool   // must have size SLOTS_PER_BUCKET
-}
-
-func MakeBucket() Bucket {
-
+	kvpairs  [SLOTS_PER_BUCKET]KVPair // must have size SLOTS_PER_BUCKET
+	occupied [SLOTS_PER_BUCKET]bool   // must have size SLOTS_PER_BUCKET
 }
 
 func (b *Bucket) tryGet(k uint64, v *uint64) bool {
@@ -55,6 +51,8 @@ func MakeCuckooMap(hashpower uint64) *CuckooMap {
 	for i, _ := range r.locks {
 		r.locks[i] = new(SMutex)
 	}
+
+	return r
 }
 
 func (m *CuckooMap) index1(k uint64) uint64 {
@@ -107,9 +105,11 @@ func (m *CuckooMap) Insert(k uint64, v uint64) uint64 {
 
 	temp := new(uint64)
 	if m.buckets[i1].tryGet(k, temp) {
+		m.unlock_two(i1, i2)
 		return INSERT_DUP
 	}
 	if m.buckets[i1].tryGet(k, temp) {
+		m.unlock_two(i1, i2)
 		return INSERT_DUP
 	}
 
@@ -117,6 +117,7 @@ func (m *CuckooMap) Insert(k uint64, v uint64) uint64 {
 		if !o {
 			m.buckets[i1].kvpairs[j] = KVPair{k: k, v: v}
 			m.buckets[i1].occupied[j] = true
+			m.unlock_two(i1, i2)
 			return INSERT_OK
 		}
 	}
@@ -125,12 +126,14 @@ func (m *CuckooMap) Insert(k uint64, v uint64) uint64 {
 		if !o {
 			m.buckets[i2].kvpairs[j] = KVPair{k: k, v: v}
 			m.buckets[i2].occupied[j] = true
+			m.unlock_two(i1, i2)
 			return INSERT_OK
 		}
 	}
 
 	// do cuckoo hashing
 
+	m.unlock_two(i1, i2)
 	return INSERT_FAIL
 }
 
