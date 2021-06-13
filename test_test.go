@@ -69,15 +69,16 @@ func TestMapDisjointConcurrent(t *testing.T) {
 	c := MakeCuckooMap(hashpower)
 
 	N := 10000
-	masks := []uint64{0xffff, 0xffff0000, 0xffff00000000, 0xffff000000000000}
+	nthread := uint64(5)
 	var wg sync.WaitGroup
-	for i := 0; i < 4; i++ {
+	for i := uint64(0); i < nthread; i++ {
 		wg.Add(1)
-		go func(mask uint64) {
+		go func(e uint64) {
 			defer wg.Done()
 			m := make(map[uint64]uint64)
 			for j := 0; j < N; j++ {
-				k := machine.RandomUint64() & mask
+				k := machine.RandomUint64()
+				k = (k/nthread) * nthread + e
 				v := machine.RandomUint64()
 				if _, ok := m[k]; ok {
 					continue // don't insert duplicates
@@ -94,7 +95,7 @@ func TestMapDisjointConcurrent(t *testing.T) {
 				t.Fatalf("Maps not equivalent")
 			}
 
-		}(masks[i])
+		}(i)
 	}
 	wg.Wait()
 }
