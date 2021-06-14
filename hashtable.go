@@ -1,5 +1,9 @@
 package cuckoo
 
+import (
+	"github.com/upamanyus/go-spinlock"
+)
+
 type KVPair struct {
 	k uint64
 	v uint64
@@ -18,9 +22,9 @@ type Bucket struct {
 func (b *Bucket) tryGet(k uint64, v *uint64) bool {
 	var ret bool
 	ret = false
-	for j, kv := range b.kvpairs {
-		if kv.k == k && b.occupied[j] {
-			*v = kv.v
+	for j := 0; j < SLOTS_PER_BUCKET; j++ {
+		if b.kvpairs[j].k == k && b.occupied[j] {
+			*v = b.kvpairs[j].v
 			ret = true
 			break
 		} else {
@@ -34,7 +38,7 @@ type CuckooMap struct {
 	numBuckets uint64 // fixed capacity; never gets larger
 	mask       uint64
 	buckets    []Bucket
-	locks      []*SMutex
+	locks      []*spinlock.SMutex
 }
 
 func MakeCuckooMap(hashpower uint64) *CuckooMap {
@@ -42,10 +46,10 @@ func MakeCuckooMap(hashpower uint64) *CuckooMap {
 	r.numBuckets = 1 << hashpower
 	r.mask = (r.numBuckets - 1)
 	r.buckets = make([]Bucket, r.numBuckets)
-	r.locks = make([]*SMutex, LOCK_STRIPES)
+	r.locks = make([]*spinlock.SMutex, LOCK_STRIPES)
 
 	for i, _ := range r.locks {
-		r.locks[i] = new(SMutex)
+		r.locks[i] = new(spinlock.SMutex)
 	}
 
 	return r
@@ -72,20 +76,16 @@ func (m *CuckooMap) Get(k uint64, v *uint64) bool {
 	i1 := m.index1(k)
 	i2 := m.index2(k)
 
-	l1 := m.locks[lockind(i1)]
-	l1.Lock()
+	m.lock_two(i1, i2)
 	if m.buckets[i1].tryGet(k, v) {
-		l1.Unlock()
+		m.unlock_two(i1, i2)
 		return true
 	}
-	l1.Unlock()
-	l2 := m.locks[lockind(i2)]
-	l2.Lock()
 	if m.buckets[i2].tryGet(k, v) {
-		l2.Unlock()
+		m.unlock_two(i1, i2)
 		return true
 	}
-	l2.Unlock()
+	m.unlock_two(i1, i2)
 	return false
 }
 

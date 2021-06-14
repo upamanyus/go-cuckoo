@@ -24,7 +24,7 @@ func TestMapSingleThreaded(t *testing.T) {
 	c := MakeCuckooMap(15)
 	m := make(map[uint64]uint64)
 
-	N := 127000
+	N := 8 * (1 << 15) * SLOTS_PER_BUCKET / 10
 	for i := 0; i < N; i++ {
 		k := machine.RandomUint64()
 		v := machine.RandomUint64()
