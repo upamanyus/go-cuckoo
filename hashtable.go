@@ -1,7 +1,7 @@
 package cuckoo
 
 import (
-	"github.com/upamanyus/go-spinlock"
+	"sync"
 )
 
 type KVPair struct {
@@ -38,7 +38,7 @@ type CuckooMap struct {
 	numBuckets uint64 // fixed capacity; never gets larger
 	mask       uint64
 	buckets    []Bucket
-	locks      []*spinlock.SMutex
+	locks      []*sync.Mutex
 }
 
 func MakeCuckooMap(hashpower uint64) *CuckooMap {
@@ -46,10 +46,10 @@ func MakeCuckooMap(hashpower uint64) *CuckooMap {
 	r.numBuckets = 1 << hashpower
 	r.mask = (r.numBuckets - 1)
 	r.buckets = make([]Bucket, r.numBuckets)
-	r.locks = make([]*spinlock.SMutex, LOCK_STRIPES)
+	r.locks = make([]*sync.Mutex, LOCK_STRIPES)
 
 	for i, _ := range r.locks {
-		r.locks[i] = new(spinlock.SMutex)
+		r.locks[i] = new(sync.Mutex)
 	}
 
 	// bucketArena := make([]KVPair, SLOTS_PER_BUCKET*r.numBuckets)
@@ -191,7 +191,6 @@ type cuckooSearchEntry struct {
 func (m *CuckooMap) cuckoo_search(i1 uint64, i2 uint64) cuckooPath {
 	var q []cuckooSearchEntry
 	var r cuckooPath
-	r = cuckooPath{}
 	q = make([]cuckooSearchEntry, 0, 256)
 	q = append(q, cuckooSearchEntry{path: nil, i: i1})
 	q = append(q, cuckooSearchEntry{path: nil, i: i2})
