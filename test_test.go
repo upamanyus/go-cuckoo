@@ -24,7 +24,7 @@ func TestMapSingleThreaded(t *testing.T) {
 	c := MakeCuckooMap(15)
 	m := make(map[uint64]uint64)
 
-	N := 8 * (1 << 15) * SLOTS_PER_BUCKET / 10
+	N := int(8 * (1 << 15) * SLOTS_PER_BUCKET / 10)
 	for i := 0; i < N; i++ {
 		k := machine.RandomUint64()
 		v := machine.RandomUint64()
@@ -47,7 +47,7 @@ func TestMapSequential(t *testing.T) {
 	m := make(map[uint64]uint64)
 
 	// when inserting sequentially, can get to 100% load factor!
-	N := SLOTS_PER_BUCKET * (1 << hashpower)
+	N := int(SLOTS_PER_BUCKET * (1 << hashpower))
 	for i := 0; i < N; i++ {
 		k := uint64(i)
 		v := machine.RandomUint64()
